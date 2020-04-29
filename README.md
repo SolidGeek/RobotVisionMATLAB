@@ -1,2 +1,2 @@
-# RobotVisionKUKA
-Using a KUKA robot to assemble LEGO bricks with object detection
+# Robot Vision Miniproject 2020
+Using RoboDK and MATLAB to simulate a robot to assemble LEGO bricks with color detection
