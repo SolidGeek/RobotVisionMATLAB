@@ -1,7 +1,7 @@
 # Robot Vision Miniproject 2020
 Using RoboDK and MATLAB to simulate a robot to assemble LEGO bricks with color detection
 
-![alt text](https://github.com/SolidGeek/RobotVisionMATLAB/blob/master/workstation.png?raw=true)
+![Image of Workstation](https://github.com/SolidGeek/RobotVisionMATLAB/blob/master/workstation.PNG)
 
 ## Installation
 
