@@ -1,68 +1,44 @@
 %% RobotVision Mini-Project
 
+clc;
+
 % Link MATLAB with RoboDK
 RDK = Robolink;
-
-% Set the path for the RoboDK project
-path = RDK.getParam('../RobotVisionMATLAB');
-
-% Add the specific RoboDK project to the MATLAB project
-RDK.AddFile([path, 'robot_environment.rdk']);
+robot = Robot;
 
 % Display a list of all items within the RoboDK Environment
 fprintf('Available items in the station:\n');
 disp(RDK.ItemList());
 
+world_frame = RDK.Item('World Frame');
+fprintf('World Frame: \t%s\n', world_frame.Name());
+
 % Define the robot
-robot = RDK.Item('KUKA KR 6 R700 sixx');
-fprintf('Robot selected: %s\n', robot.Name());
-%robot.setVisible(1);
+roboArm = RDK.Item('KUKA KR 6 R700 sixx');
+fprintf('Robot selected: \t%s\n', roboArm.Name());
+robot.roboarm = roboArm; 
 
+ref_base = roboArm.Parent();
+fprintf('Robot base frame: \t%s\n', ref_base.Name());
 
-% Retrieve the base frame of the robot
-ref_base = robot.Parent();
-fprintf('Robot base frame: %s\n', ref_base.Name());
+object = RDK.Item('Plate');
+fprintf('Object selected: \t%s\n', object.Name());
 
-object = RDK.Item('Block');
-fprintf('Object selected: %s\n', object.Name());
+ref_object = RDK.Item('LEGO Bricks Frame');
+fprintf('Reference frame: \t%s\n', ref_object.Name());
 
-ref_object = object.Parent();
-fprintf('Reference frame: %s\n', ref_object.Name());
+tool = RDK.Item('Gripper');
+fprintf('Tool selected: \t\t%s\n', tool.Name());
 
-tool = RDK.Item('Gripper RobotiQ 85 Opened');
-fprintf('Tool selected: %s\n', tool.Name());
+targetHome = RDK.Item('Home');
+fprintf('Home Position: \t\t%s\n', targetHome.Name());
 
-target1 = RDK.Item('Home');
-fprintf('Target 1 selected:\t%s\n', target1.Name());
+jhome = targetHome.Joints();
+RDK.setSimulationSpeed(5);
 
-target2 = RDK.Item('Pickup');
-fprintf('Target 2 selected:\t%s\n', target2.Name());
+roboArm.setPoseFrame(world_frame);
 
-
-% Get the joint values for the first target (home target):
-% jhome = [ 0, 0, 0, 0, 30, 0];
-jhome = target1.Joints();
-Pickup = target2.Joints();
-
-% Set the simulation speed. This is a ratio, for example, simulation speed
-% of 5 (default) means that 1 second of simulated time corresponds to 1
-% second of real time.
-RDK.setSimulationSpeed(1);
-
-% Display the current joint values of the robot
-fprintf('Current robot joints:\n');
-joints = robot.Joints();
-disp(joints);
-
-% Set the robot at the home position
-robot.setJoints(jhome); % Immediate move
-
-fprintf('Moving to Pickup\n');
-robot.MoveJ(Pickup)
-
-fprintf('Done!\n');
-
-
+roboArm.MoveJ(jhome); % Joint move
 
 
 
