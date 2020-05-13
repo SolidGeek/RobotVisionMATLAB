@@ -21,4 +21,3 @@ RDK.Cam2D_Snapshot('test.jpg', camera_id);
 % Now some python script, to do the image detection.. OPENCV BOIS
 
 import py.find_lego_bricks.*
-py.find_lego_bricks 
