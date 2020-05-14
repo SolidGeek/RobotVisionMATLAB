@@ -38,7 +38,6 @@ classdef Robot
                 fprintf('Attached: %s\n', attachedname);
             else
                 fprintf('No object is close enough\n');
-                tool.DetachAll();
             end
         end
         
