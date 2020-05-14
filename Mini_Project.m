@@ -37,7 +37,7 @@ targetHome = RDK.Item('Home');
 fprintf('Home Position: \t\t%s\n', targetHome.Name());
 
 jhome = targetHome.Joints();
-RDK.setSimulationSpeed(5);
+RDK.setSimulationSpeed(1);
 
 roboArm.setPoseFrame(world_frame);
 
