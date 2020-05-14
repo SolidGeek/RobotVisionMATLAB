@@ -22,6 +22,40 @@ def order_points(pts):
     
     return rect;
 
+def order_corners( points ):
+    # It will first sort on the y value and if that's equal then it will sort on the x value
+    ordered = [];
+    padding = 10;
+    last_y = points[0][1];
+    
+    points = sorted(points , key=lambda y: y[1]);
+    
+    row = [];
+    
+    for i, point in enumerate(points):
+        
+        # Check if y is out of range
+        if(point[1] > last_y - padding  and point[1] < last_y + padding ):
+            # Is within range
+            row.append( point );
+            #print(row);
+            
+        else:
+
+            row = sorted(row , key=lambda x: x[0]);
+            ordered.extend(row);
+            
+            row = [];
+            last_y = point[1];
+            
+            row.append( point );
+            
+        if( len(points)-1 == i ):
+            row = sorted(row , key=lambda x: x[0]);
+            ordered.extend(row);
+        
+    return ordered;
+
 def four_point_transform(image, pts):
     # obtain a consistent order of the points and unpack them
     # individually
@@ -103,17 +137,100 @@ def get_flat_plate( image ):
     
     return warped;
 
-#dst = cv2.cornerHarris(binaryImage,2,3,0.04)
+# Map from one variable to another
+def pixelMap( x, in_min, in_max, out_min, out_max):
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 
-#result is dilated for marking the corners, not important
-#dst = cv2.dilate(dst, None)
+def detect_lego_pos( flatImage ):
+    # NOW find contours of lego bricks on flat image
+    grayImage = cv2.cvtColor(flatImage, cv2.COLOR_BGR2GRAY)
+    # Blur image a little to remove very sharp edges
+    blur = cv2.blur(grayImage,(5,5));
 
-# Threshold for an optimal value, it may vary depending on the image.
-#image[dst>0.01*dst.max()]=[0,255,255]
+    # Convert to binary image (black/white)
+    (thresh, binaryImage) = cv2.threshold(blur, 1, 255, cv2.THRESH_BINARY)
 
-#cv2.imshow('Binary',image);
-# cv2.imshow('Dst',detected_edges);
+    # Erode to get closer to actual border 
+    kernel = np.ones((5,5))
+    erosion = cv2.erode(binaryImage, kernel,iterations = 1)
 
+    # Invert
+    inverted = cv2.bitwise_not(binaryImage);
+
+    # Find contours in inverted binary image
+    (contours,hier) = cv2.findContours(erosion,cv2.RETR_CCOMP,cv2.CHAIN_APPROX_SIMPLE);
+
+    # Creating empty array
+    polygones = [];
+    corners = [];
+    h_block = 0;
+    h_total = 0;
+
+    # Now fit polyline to all 16 contours to find locations of lego bricks
+    for i, contour in enumerate(contours):
+        
+        epsilon = 0.1 * cv2.arcLength(contours[i], True)
+        polygone = cv2.approxPolyDP(contours[i], epsilon, True)
+        
+        new = [];
+        for point in polygone:
+            new.append( [ point[0][0], point[0][1] ] );
+        
+        # Order points
+        new = order_points( np.array( new ) );
+        new = new.astype(int);
+        
+        # Save polygone and 1st corner of polygone for later use
+        polygones.append(new);
+        corners.append(new[0]);
+     
+        h_total = h_total + new[3][1] - new[0][1];
+        h_block = h_total / (i+1);
+    
+    corners = order_corners(corners);
+    
+    return corners, int(h_block); 
+
+mean_color = {
+    "blue":   [100, 250],
+    "red":    [0, 250],
+    "yellow": [30, 250],
+    "orange": [15, 250],
+    "green":  [60, 250],
+    "white":  [0, 0]
+}
+
+def detect_lego_color( flatImage, corners, height ):
+
+    # Loop though all polygones, to determine the color within this area
+    for i, corner in enumerate(corners):
+        
+        # The first point in the polygone, is the upper left corner
+        top = corner;
+
+        x = top[0];
+        y = top[1];
+
+        # Select area to check
+        cropped = flatImage[y:y+height, x:x+height]
+        
+        # Convert cropped to hsv to check for hue and saturation
+        hsv = cv2.cvtColor(cropped, cv2.COLOR_BGR2HSV);
+        h, s, v = cv2.split(hsv);
+        
+        # Merge hue and saturation, to detect difference between red and white (has same hue)
+        hsv = cv2.merge((h, s));
+
+        for color in mean_color:
+            lower = np.array(mean_color[color]) - 5;
+            upper = np.array(mean_color[color]) + 5;
+
+            mask = cv2.inRange(hsv, lower, upper);
+            
+            if 255 in mask:
+                print(i, color);
+
+    
 # Load image taken from roboDK 2d camera
 filename = 'test.jpg'
 image = cv2.imread(filename)
@@ -121,89 +238,40 @@ image = cv2.imread(filename)
 
 flatImage, plate_dim = get_flat_plate(image);
     
-# NOW find contours of lego bricks on flat image
+corners, block_height = detect_lego_pos( flatImage );
 
-grayImage = cv2.cvtColor(flatImage, cv2.COLOR_BGR2GRAY)
-# Blur image a little to remove very sharp edges
-blur = cv2.blur(grayImage,(5,5));
+detect_lego_color( flatImage, corners, block_height );
 
-# Convert to binary image (black/white)
-(thresh, binaryImage) = cv2.threshold(blur, 1, 255, cv2.THRESH_BINARY)
-
-# Erode to get closer to actual border 
-kernel = np.ones((5,5))
-erosion = cv2.erode(binaryImage, kernel,iterations = 1)
-
-cv2.imshow('erosion',erosion);
-
-# Invert
-inverted = cv2.bitwise_not(binaryImage);
-
-
-
-# Find contours in inverted binary image
-(contours,hier) = cv2.findContours(erosion,cv2.RETR_CCOMP,cv2.CHAIN_APPROX_SIMPLE);
-
-# Creating empty array
-polygones = [];
-h_block = 0;
-h_total = 0;
-
-# Now fit polyline to all 16 contours to find locations of lego bricks
-for i, contour in enumerate(contours):
-    
-    epsilon = 0.1 * cv2.arcLength(contours[i], True)
-    polygone = cv2.approxPolyDP(contours[i], epsilon, True)
-    
-    new = [];
-    for point in polygone:
-        new.append( [ point[0][0], point[0][1] ] );
-    
-    # Order points
-    new = order_points( np.array( new ) );
-    polygones.append(new);
-    
- 
-    h_total = h_total + new[3][1] - new[0][1];
-    h_block = h_total / (i+1);
-
-    
-    #cv2.circle(flatImage, tuple(new[0]), 5, [255,255,255], 2)
-    #cv2.drawContours(flatImage, [polygone], -1, (0, 0, 255), 2)
-
-def pixelMap( x, in_min, in_max, out_min, out_max):
-    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 
 # Draw each lego polygone
-for polygone in polygones:
-    #print(polygone)
-    cv2.rectangle(flatImage, tuple(polygone[0]), tuple(polygone[0] + h_block), (0,255,0), 2)
+for i, corner in enumerate(corners):
+    cv2.putText(flatImage, str(i), tuple(corner), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 1, cv2.LINE_AA)
+    cv2.rectangle(flatImage, tuple(corner), tuple(corner + block_height), (0,255,0), 2)
     
-# Selecting a polygone
-test = polygones[4][0];
-cv2.circle(flatImage, tuple(test), 5, [255,255,255], 2)
-x = test[0];
-y = test[1];
+# Selecting a brick
+brick_id = 0;
+brick = corners[brick_id];
+
+cv2.circle(flatImage, tuple(brick), 5, [255,255,255], 2)
+x = brick[0];
+y = brick[1];
 
 x_mm = pixelMap(x, 0, plate_dim, 260, 0);
 y_mm = pixelMap(y, 0, plate_dim, 0, 260);
 
-print('x',x, 'px');
-print('y',y, 'px');
-print( 'x', x_mm, 'mm');
-print( 'y', y_mm, 'mm');
-
-print( 'Coordinates of lego block 4, with respect to world frame' );
+print('\nBrick ' + str(brick_id) + ' is located at:')
 print( 'abs x', x_mm - 16 + 300, 'mm');
 print( 'abs y', y_mm + 16 - 400, 'mm');
+
+
 #print( h_block );
 #print( round(h_block) );
 
 
 
-cv2.imshow('Original',image);
-cv2.imshow('Warped',flatImage);
-cv2.imshow('Binary',binaryImage);
+#cv2.imshow('Original',image);
+cv2.imshow('Warped with stuff',flatImage);
+#cv2.imshow('Binary',binaryImage);
 
 cv2.waitKey(0)
 cv2.destroyAllWindows()
