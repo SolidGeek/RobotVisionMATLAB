@@ -3,6 +3,7 @@ classdef Robot
     properties
         roboarm;
         robotool;
+        robogripper;
     end
     
     methods
@@ -34,6 +35,7 @@ classdef Robot
         function attach(this)
             attached = this.robotool.AttachClosest();
             if attached.Valid()
+                this.robogripper.setJoints(32)
                 attachedname = attached.Name();
                 fprintf('Attached: %s\n', attachedname);
             else
@@ -42,8 +44,17 @@ classdef Robot
         end
         
         function detach(this)
+                this.robogripper.setJoints(85)
                 this.robotool.DetachAll();
                 fprintf('Object is detached\n');
+        end
+        
+        function open(this)
+                this.robogripper.setJoints(85)
+        end
+        
+        function close(this)
+                this.robogripper.setJoints(32)
         end
         
     end
