@@ -30,11 +30,11 @@ ref_object = RDK.Item('LEGO Bricks Frame');
 fprintf('Reference frame: \t%s\n', ref_object.Name());
 
 tool = RDK.Item('GripperTCP');
-fprintf('Tool selected: \t\t%s\n', tool.Name());
+fprintf('Gripper TCP: \t\t%s\n', tool.Name());
 robot.robotool = tool;
 
 gripper = RDK.Item('RobotiQ 2F85');
-fprintf('Tool selected: \t\t%s\n', tool.Name());
+fprintf('Gripper selected: \t\t%s\n', tool.Name());
 robot.robogripper = gripper;
 
 targetHome = RDK.Item('Home');
@@ -45,12 +45,10 @@ RDK.setSimulationSpeed(1);
 
 roboArm.setPoseFrame(world_frame);
 
-roboArm.MoveJ(jhome); % Joint move
-gripper.setJoints(85)
+robot.MoveJ(jhome); % Joint move
+robot.open()
 
 robot.setXYZ(515.875,-184,30);
-
-gripper.setJoints(32)
 
 robot.attach()
 
@@ -58,7 +56,7 @@ robot.setXYZ(523.784,321.229,30);
 
 robot.detach()
 
-roboArm.MoveJ(jhome); % Joint move
+robot.MoveJ(jhome); % Joint move
 
 robot.setXYZ(523.784,321.229,30);
 
@@ -68,4 +66,4 @@ robot.setXYZ(515.875,-181.5,30);
 
 robot.detach()
 
-roboArm.MoveJ(jhome); % Joint move
+robot.MoveJ(jhome); % Joint move
