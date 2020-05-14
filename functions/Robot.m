@@ -2,6 +2,7 @@ classdef Robot
     
     properties
         roboarm;
+        robotool;
     end
     
     methods
@@ -28,6 +29,22 @@ classdef Robot
         function moveZ(this,z)
             newPos = this.roboarm.Pose() * transl(0,0,z);
             this.roboarm.MoveJ(newPos);
+        end
+        
+        function attach(this)
+            attached = this.robotool.AttachClosest();
+            if attached.Valid()
+                attachedname = attached.Name();
+                fprintf('Attached: %s\n', attachedname);
+            else
+                fprintf('No object is close enough\n');
+                tool.DetachAll();
+            end
+        end
+        
+        function detach(this)
+                this.robotool.DetachAll();
+                fprintf('Object is detached\n');
         end
         
     end
