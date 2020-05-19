@@ -18,11 +18,11 @@ classdef Robot
         end
         
         function clap(this)
-            for i = 1:5
-                this.open();
-                pause(0.15);
-                this.robogripper.setJoints(0)
-                pause(0.15);
+            for i = 1:10
+                this.close();
+                pause(0.5);
+                this.open()
+                pause(0.5);
             end
         end
         

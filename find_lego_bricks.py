@@ -264,7 +264,7 @@ def detect_lego_color( flatImage, corners, height ):
 def run( name ):
 
     # Load image taken from roboDK 2d camera
-    filename = 'test.jpg'
+    filename = 'images/raw.jpg'
     image = cv2.imread(filename)
 
     # Remove perspective from camera image, and get the size of the square in pixels for later use
@@ -323,4 +323,4 @@ def run( name ):
     #cv2.waitKey(0)
     #cv2.destroyAllWindows()
 
-#run( 'marge' );
+# run( 'marge' );

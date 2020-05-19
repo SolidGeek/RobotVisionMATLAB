@@ -15,7 +15,7 @@ RDK = Robolink;
 % Set the simulation speed. This is a ratio, for example, simulation speed
 % of 5 (default) means that 1 second of simulated time corresponds to 1
 % second of real time.
-RDK.setSimulationSpeed(5);
+RDK.setSimulationSpeed(1);
 
 % Define the robot
 arm = RDK.Item('KUKA KR 6 R700 sixx');
@@ -36,6 +36,7 @@ tool = RDK.Item('GripperTCP');
 
 % Get reference to the gripper
 gripper = RDK.Item('RobotiQ 2F85');
+gripper.setSpeed(1); % Set the TCP linear speed in mm/s
 
 targetHome = RDK.Item('Home');
 jhome = targetHome.Joints();
@@ -111,23 +112,18 @@ else
         % Move up a little 
         robot.moveZ(50);
         
-        % Move to the building zone (a little above)
         pos = plate_pos + robot.addTrans(0,0, (i-1)*20 + 30);
         robot.setTrans(pos);
         
-        % Lower to correct height
-        robot.moveZ(-30);
+        pos = plate_pos + robot.addTrans(0,0, (i-1)*20);
+        robot.setTrans(pos);
         
-        % Detach the brick
+        % Deta the brick
         robot.detach();
         
         % Raise the tool again
         robot.moveZ(30);
  
     end
-    
-    arm.MoveJ(jhome);
-    
-    robot.clap();
     
 end
