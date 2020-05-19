@@ -59,8 +59,9 @@ RDK.Cam2D_Close(0);
 camera = RDK.Item('Camera');
 camera_id = RDK.Cam2D_Add(camera);
 
-% Take a picture
+% Take a picture and close again
 RDK.Cam2D_Snapshot('images/raw.jpg', camera_id);
+RDK.Cam2D_Close(0);
 
 
 % Now some python script, to do the image detection.. OPENCV BOIS
