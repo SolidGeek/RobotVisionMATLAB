@@ -2,6 +2,40 @@ import cv2
 import numpy as np
 import time
 
+# Lego plate position with reference to the world frame (0,0)
+plate_x = 300;
+plate_y = -400;
+
+# Lego brick actual size in mm
+brick_dim = 32; 
+
+plate_dim_mm = 260; # Height and width of plate in millimeter
+
+# Mean hue and saturation for color detection in the HSV spectrum
+mean_color = {
+    "blue":   [100, 250],
+    "red":    [0, 250],
+    "yellow": [30, 250],
+    "orange": [15, 250],
+    "green":  [60, 250],
+    "white":  [0, 0]
+}
+
+# Recipes for building characters.
+recipes = {
+    "homer":  ['blue', 'white', 'white', 'yellow'],
+    "bart":   ['blue', 'red', 'yellow'],
+    "marge":  ['green', 'green', 'green', 'yellow', 'blue', 'blue'],
+    "lisa":   ['orange', 'orange', 'yellow'],
+    "maggie": ['blue', 'yellow']
+}
+
+# List for holding brick positions 
+bricks = []
+
+# List for holding brick colors
+colors = []
+
 def order_points(pts):
     # initialzie a list of coordinates that will be ordered
     # such that the first entry in the list is the top-left,
@@ -191,16 +225,10 @@ def detect_lego_pos( flatImage ):
     
     return corners, int(h_block); 
 
-mean_color = {
-    "blue":   [100, 250],
-    "red":    [0, 250],
-    "yellow": [30, 250],
-    "orange": [15, 250],
-    "green":  [60, 250],
-    "white":  [0, 0]
-}
 
 def detect_lego_color( flatImage, corners, height ):
+
+    colors = []
 
     # Loop though all polygones, to determine the color within this area
     for i, corner in enumerate(corners):
@@ -228,51 +256,71 @@ def detect_lego_color( flatImage, corners, height ):
             mask = cv2.inRange(hsv, lower, upper);
             
             if 255 in mask:
-                print(i, color);
+                colors.insert(i, color)
+                
+    return colors
 
+
+def run( name ):
+
+    # Load image taken from roboDK 2d camera
+    filename = 'test.jpg'
+    image = cv2.imread(filename)
+
+    # Remove perspective from camera image, and get the size of the square in pixels for later use
+    flatImage, plate_dim_px = get_flat_plate(image);
     
-# Load image taken from roboDK 2d camera
-filename = 'test.jpg'
-image = cv2.imread(filename)
+    # Detect bricks and get the mean height of the bricks in pixels
+    bricks, block_height = detect_lego_pos( flatImage );
+
+    # Detect the color of each brick
+    colors = detect_lego_color( flatImage, bricks, block_height );
 
 
-flatImage, plate_dim = get_flat_plate(image);
+    # Get the recipe for "name" in the big recipe-book.
+    recipe = recipes[name];
+        
+    coordinates_px = []
     
-corners, block_height = detect_lego_pos( flatImage );
-
-detect_lego_color( flatImage, corners, block_height );
-
-
-# Draw each lego polygone
-for i, corner in enumerate(corners):
-    cv2.putText(flatImage, str(i), tuple(corner), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 1, cv2.LINE_AA)
-    cv2.rectangle(flatImage, tuple(corner), tuple(corner + block_height), (0,255,0), 2)
+    # Loop though the recipe, and find the bricks needed
+    for item in recipe:
+        
+        # Get index of the first colored brick in the list
+        index = colors.index(item)
+        
+        # Set the brick to "used" such that it cannot be used any more
+        colors[index] = '-';
+        
+        coordinates_px.append( bricks[index] );
+        
     
-# Selecting a brick
-brick_id = 0;
-brick = corners[brick_id];
+    coordinates_mm = []
+    
+    for i, coordinate in enumerate(coordinates_px):
+        
+        x = coordinate[0];
+        y = coordinate[1];
+        
+        x_mm = plate_x + pixelMap(x, 0, plate_dim_px, plate_dim_mm, 0) - brick_dim/2;
+        y_mm = plate_y + pixelMap(y, 0, plate_dim_px, 0, plate_dim_mm) + brick_dim/2;
+        
+        coordinates_mm.append([x_mm, y_mm])
+        
+    return coordinates_mm;
 
-cv2.circle(flatImage, tuple(brick), 5, [255,255,255], 2)
-x = brick[0];
-y = brick[1];
+    # Draw each lego polygone
+    # for i, corner in enumerate(bricks):
+        # cv2.putText(flatImage, str(i), tuple(corner), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 1, cv2.LINE_AA)
+        # cv2.rectangle(flatImage, tuple(corner), tuple(corner + block_height), (0,255,0), 2)
+        
+    #print( h_block );
+    #print( round(h_block) );
 
-x_mm = pixelMap(x, 0, plate_dim, 260, 0);
-y_mm = pixelMap(y, 0, plate_dim, 0, 260);
+    #cv2.imshow('Original',image);
+    #cv2.imshow('Warped with stuff',flatImage);
+    #cv2.imshow('Binary',binaryImage);
+    
+    #cv2.waitKey(0)
+    #cv2.destroyAllWindows()
 
-print('\nBrick ' + str(brick_id) + ' is located at:')
-print( 'abs x', x_mm - 16 + 300, 'mm');
-print( 'abs y', y_mm + 16 - 400, 'mm');
-
-
-#print( h_block );
-#print( round(h_block) );
-
-
-
-#cv2.imshow('Original',image);
-cv2.imshow('Warped with stuff',flatImage);
-#cv2.imshow('Binary',binaryImage);
-
-cv2.waitKey(0)
-cv2.destroyAllWindows()
-
+#run( 'marge' );

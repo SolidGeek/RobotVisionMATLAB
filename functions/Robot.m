@@ -17,10 +17,18 @@ classdef Robot
             this.roboarm.MoveJ(target);
         end
         
+        function value = addTrans(this, x,y,z)
+            value = [0 0 0 x; 0 0 0 y; 0 0 0 z; 0 0 0 0];
+        end
+        
         % Function that set X Y Z coordinates and move joints to position
         function setXYZ(this,x,y,z)
             newPos = transl(x,y,z);
             this.roboarm.MoveJ(newPos);
+        end
+        
+        function setTrans(this, trans)
+            this.roboarm.MoveJ(trans)
         end
         
         % Function move in X Y Z from current position
