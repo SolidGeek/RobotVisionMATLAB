@@ -64,20 +64,18 @@ RDK.Cam2D_Snapshot('images/raw.jpg', camera_id);
 RDK.Cam2D_Close(0);
 
 
-% Now some python script, to do the image detection.. OPENCV BOIS
-
+% Import the python script for image processing
 import py.find_lego_bricks.*
 
 name = input('Select between: marge, bart, homer, maggie or lisa \n','s');
 
 if isempty(name)
-    
     disp('Please type a name');
-    
 else
 
     disp('Initiating brick detection...');
     
+    % Call the Python script with the wanted character name
     results = py.find_lego_bricks.run(name); 
 
     % Convert the results to a matrix
@@ -96,11 +94,9 @@ else
     disp('Building you a Simpson');
     
     for i = 1:length(coordinates)
-        
         % Get the target 
         pos = coordinates(i,:); 
-        disp('Going to:')
-        disp(pos)
+        disp('Going to:'); disp(pos);
         
         % Move to target positon
         robot.setXYZ( pos(1,1) , pos(1,2), 50 );

@@ -2,6 +2,8 @@ import cv2
 import numpy as np
 import time
 
+generate_images = True; 
+
 # Lego plate position with reference to the world frame (0,0)
 plate_x = 300;
 plate_y = -400;
@@ -131,7 +133,7 @@ def four_point_transform(image, pts):
     return warped, maxDim
     
 def get_flat_plate( image ):
-    
+    # Convert to grayscale
     grayImage = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
     # Blur image a little to remove very sharp edges
@@ -139,7 +141,8 @@ def get_flat_plate( image ):
     
     # Convert to binary image (black/white)
     (thresh, binaryImage) = cv2.threshold(blur, 1, 255, cv2.THRESH_BINARY)
-    # Invert
+    
+    # Invert the binary image to find contours
     inverted = cv2.bitwise_not(binaryImage);
 
     # Find contours in inverted binary image
@@ -148,14 +151,19 @@ def get_flat_plate( image ):
     # The first contour is always the most outer contour
     plateContour = contours[0];
     
-    # Fill the contour with white, to remove all the lego bricks (only plate left).
-    #cv2.drawContours(inverted,[plateContour],0,255,-1)
     
-    # Convert back to normal binary
-    #binaryImage = cv2.bitwise_not(inverted);
-
+    
+    
+    # ----- FOR OUTPUT IMAGE ONLY ----- #
+    if generate_images:
+        # Convert back to normal binary
+        binaryImage = cv2.bitwise_not(inverted);
+        cv2.imwrite('images/1-binary.jpg', binaryImage)
+    # ----- OUTPUT IMAGE END ----- #
+    
+    
     # Now fit polyline to outer contour
-    epsilon = 0.1 * cv2.arcLength(plateContour, True)
+    epsilon = 5 # This is the maximum distance between the original curve and its approximation (in px).
     points = cv2.approxPolyDP(plateContour, epsilon, True)
 
     # Generate coordinates for imageTransformation
@@ -164,16 +172,36 @@ def get_flat_plate( image ):
         coordinates[i] = point[0];
 
     # Warp the image, to get a flat image of the plate = no perspective
-    warped = four_point_transform(image, coordinates);
+    warped, plate_dim_px = four_point_transform(image, coordinates);
     
-    # Draw polyline (all points) on original image
-    #cv2.drawContours(image, [points], -1, (0, 255, 0), 4)
+    # ----- FOR OUTPUT IMAGE ONLY ----- #
+    if generate_images:
+        copy = binaryImage.copy();
+        new = cv2.cvtColor(copy, cv2.COLOR_GRAY2RGB)
+        
+        # Draw polyline (all points)
+        cv2.drawContours(new, [points], -1, (0, 255, 0), 4)
+        
+        for point in coordinates:
+            cv2.circle(new, (int(point[0]), int(point[1])), 5, (255, 0,0), 3)
+        
+        cv2.imwrite('images/2-contour-corners.jpg', new)
+    # ----- OUTPUT IMAGE END ----- #
     
-    return warped;
+    
+    # ----- FOR OUTPUT IMAGE ONLY ----- #
+    if generate_images:
+        cv2.imwrite('images/3-flatimg.jpg', warped)
+    # ----- OUTPUT IMAGE END ----- #
+    
+    
+    return warped, plate_dim_px;
+
 
 # Map from one variable to another
 def pixelMap( x, in_min, in_max, out_min, out_max):
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+
 
 def detect_lego_pos( flatImage ):
     # NOW find contours of lego bricks on flat image
@@ -183,14 +211,26 @@ def detect_lego_pos( flatImage ):
 
     # Convert to binary image (black/white)
     (thresh, binaryImage) = cv2.threshold(blur, 1, 255, cv2.THRESH_BINARY)
-
+    
+    
+    # ----- FOR OUTPUT IMAGE ONLY ----- #
+    if generate_images:
+        cv2.imwrite('images/4-flat-binary.jpg', binaryImage)
+    # ----- OUTPUT IMAGE END ----- #
+    
+    
     # Erode to get closer to actual border 
     kernel = np.ones((5,5))
     erosion = cv2.erode(binaryImage, kernel,iterations = 1)
 
-    # Invert
-    inverted = cv2.bitwise_not(binaryImage);
 
+    # ----- FOR OUTPUT IMAGE ONLY ----- #
+    if generate_images:
+        inverted = cv2.bitwise_not(erosion);
+        cv2.imwrite('images/5-flat-binary-erosion.jpg', inverted)
+    # ----- OUTPUT IMAGE END ----- #
+    
+    
     # Find contours in inverted binary image
     (contours,hier) = cv2.findContours(erosion,cv2.RETR_CCOMP,cv2.CHAIN_APPROX_SIMPLE);
 
@@ -222,6 +262,18 @@ def detect_lego_pos( flatImage ):
         h_block = h_total / (i+1);
     
     corners = order_corners(corners);
+
+    # ----- FOR OUTPUT IMAGE ONLY ----- #
+    if generate_images:
+        copy = inverted.copy();
+        new = cv2.cvtColor(copy, cv2.COLOR_GRAY2RGB)
+        for i, corner in enumerate(corners):
+            # cv2.putText(flatImage, str(i), tuple(corner), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 1, cv2.LINE_AA)
+            cv2.rectangle(new, tuple(corner), tuple(np.array(corner) + int(h_block)), (0,255,0), 2)
+            cv2.circle(new, tuple(corner), 5, (255, 0,0), 3) 
+            
+        cv2.imwrite('images/6-bricks-position.jpg', new)
+    # ----- OUTPUT IMAGE END ----- #
     
     return corners, int(h_block); 
 
@@ -258,6 +310,29 @@ def detect_lego_color( flatImage, corners, height ):
             if 255 in mask:
                 colors.insert(i, color)
                 
+    # ----- FOR OUTPUT IMAGE ONLY ----- #
+    if generate_images:
+        new = flatImage.copy();
+        new.fill(255);
+        for i, point in enumerate(corners):
+            
+            # Get the color in HSV
+            color_hsv = mean_color[colors[i]].copy();
+            color_hsv.append(255)
+            
+            # Convert to RGB
+            color_hsv = np.uint8([[color_hsv]])
+            color_rgb = cv2.cvtColor(color_hsv, cv2.COLOR_HSV2BGR)[0][0];
+            
+            color = tuple(color_rgb);
+            
+            cv2.rectangle(new, tuple(point), tuple(np.array(point) + int(height)), (int(color[0]), int(color[1]), int(color[2])), -1)
+            cv2.rectangle(new, tuple(point), tuple(np.array(point) + int(height)), (0,0,0), 1)
+            cv2.circle(new, tuple(point), 5, (255, 0,0), 3) 
+            
+        cv2.imwrite('images/7-colors.jpg', new)
+    # ----- OUTPUT IMAGE END ----- #
+                
     return colors
 
 
@@ -268,14 +343,13 @@ def run( name ):
     image = cv2.imread(filename)
 
     # Remove perspective from camera image, and get the size of the square in pixels for later use
-    flatImage, plate_dim_px = get_flat_plate(image);
+    flatImage, plate_dim_px = get_flat_plate(image)
     
     # Detect bricks and get the mean height of the bricks in pixels
     bricks, block_height = detect_lego_pos( flatImage );
-
+    
     # Detect the color of each brick
     colors = detect_lego_color( flatImage, bricks, block_height );
-
 
     # Get the recipe for "name" in the big recipe-book.
     recipe = recipes[name];
@@ -323,4 +397,4 @@ def run( name ):
     #cv2.waitKey(0)
     #cv2.destroyAllWindows()
 
-# run( 'marge' );
+run( 'marge' );
